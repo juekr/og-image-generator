@@ -50,37 +50,50 @@ class OgImageGenerator {
         $this->SITE_ROOT = realpath(dirname(__FILE__).DIRECTORY_SEPARATOR.'..');
         $this->SITE_URL = empty($_SERVER['HTTP_HOST']) ? null : 'http'. (!empty($_SERVER['HTTPS']) ? "s" : "") .'://'.$_SERVER['HTTP_HOST'].'/'.$this->BASE_FOLDER;
 
-        $this->cache_dir = $this->SITE_ROOT.DIRECTORY_SEPARATOR."cache".DIRECTORY_SEPARATOR;
-        $this->save_dir = $this->SITE_ROOT.DIRECTORY_SEPARATOR."og-images".DIRECTORY_SEPARATOR;
-        $this->save_dir_url = $this->SITE_URL."/og-images/";
-        $this->font_dir = $this->SITE_ROOT.DIRECTORY_SEPARATOR.'fonts'.DIRECTORY_SEPARATOR;
+        $this->cache_dir = $this->set_cache_dir();
+        $this->save_dir = $this->set_save_dir();
+        $this->save_dir_url = $this->set_save_dir_url();
+        $this->font_dir = $this->set_font_dir();
     }
 
-    public function set_font_dir($dir) 
+    public function set_font_dir($dir = null) 
     {
         if (file_exists($dir) && is_dir($dir)):
             $this->font_dir = $dir;
-            $this->setup_paths_and_directories();
+        elseif(empty($dir)):
+            $this->SITE_ROOT.DIRECTORY_SEPARATOR.'fonts'.DIRECTORY_SEPARATOR;
         endif;
         return $this->font_dir;
     }
 
-    public function set_save_dir($dir) 
+    public function set_save_dir($dir = null) 
     {
         if (file_exists($dir) && is_dir($dir)):
             $this->save_dir = $dir;
-            $this->setup_paths_and_directories();
+        elseif (empty($dir)):
+            $this->save_dir = $this->SITE_ROOT.DIRECTORY_SEPARATOR."og-images".DIRECTORY_SEPARATOR;
         endif;
         return $this->save_dir;
     }
 
-    public function set_cache_dir($dir) 
+    public function set_cache_dir($dir = null) 
     {
         if (file_exists($dir) && is_dir($dir)):
             $this->cache_dir = $dir;
-            $this->setup_paths_and_directories();
+        elseif (empty($dir)):
+            $this->cache_dir = $this->SITE_ROOT.DIRECTORY_SEPARATOR."cache".DIRECTORY_SEPARATOR;
         endif;
         return $this->cache_dir;
+    }
+
+    public function set_save_dir_url($relative_url = null) 
+    {
+        if (!empty($url)):
+            $this->save_dir_url = substr($this->SITE_URL,-1) == "/" ? "" : "/" . $this->SITE_URL.$relative_url;
+        else:
+            $this->save_dir_url = substr($this->SITE_URL,-1) == "/" ? "" : "/" . $this->SITE_URL."/og-images/";
+        endif;
+        return $this->save_dir_url;
     }
 
     # 🗑️
