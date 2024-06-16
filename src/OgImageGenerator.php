@@ -60,6 +60,7 @@ class OgImageGenerator {
     {
         if (file_exists($dir) && is_dir($dir)):
             $this->font_dir = $dir;
+            $this->setup_paths_and_directories();
         endif;
         return $this->font_dir;
     }
@@ -68,6 +69,7 @@ class OgImageGenerator {
     {
         if (file_exists($dir) && is_dir($dir)):
             $this->save_dir = $dir;
+            $this->setup_paths_and_directories();
         endif;
         return $this->save_dir;
     }
@@ -76,6 +78,7 @@ class OgImageGenerator {
     {
         if (file_exists($dir) && is_dir($dir)):
             $this->cache_dir = $dir;
+            $this->setup_paths_and_directories();
         endif;
         return $this->cache_dir;
     }
