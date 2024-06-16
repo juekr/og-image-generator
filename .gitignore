@@ -1,0 +1,6 @@
+dev.php
+.env
+*.env
+config.php
+config/
+/vendor/
