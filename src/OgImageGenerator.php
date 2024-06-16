@@ -207,7 +207,7 @@ class OgImageGenerator {
 
     public function get_og_image_url($absolute_path = null) 
     {
-        if (empty($absolute_path)) $hash = $this->last_image;
+        if (empty($absolute_path)) $absolute_path = $this->last_image;
         if (empty($absolute_path) || !file_exists($absolute_path)) return null;
         $filename = basename($absolute_path);
         return $this->save_dir_url . (substr($this->save_dir_url,-1) == "/" ? "" : "/") .$filename;
