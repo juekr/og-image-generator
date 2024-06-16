@@ -4,3 +4,5 @@ dev.php
 config.php
 config/
 /vendor/
+og-images/*.*
+cache/*.*

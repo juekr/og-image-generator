@@ -1,21 +1,33 @@
 <?php
 namespace juekr;
 
+use Imagick;
+use ImagickPixel;
+
 class OgImageGenerator {
-    private $cache_path = null;
-    private $cache = null;
-    private $base_image = null;
+    private $BASE_FOLDER = null;
+    private $SITE_ROOT = null; 
+    private $SITE_URL = null;
+    private $cache_dir = null;
+    private $save_dir_url = null;
     private $font_dir = null;
+    private $save_dir = null;
+
+    private $last_image;
+
+    private $og_resolution_w = 1200, $og_resolution_h = 630;
+
+    private $base_image = null;
     private $text = [], $overlay_images = [];
     private $background_color = '#B3B3B3';
     private $text_default_values = [
-        "font" => "Arial",
-        "pos_x" => 0, "pos_y" => 0, 
+        "font" => "HomeVideo",
+        "pos_x" => 10, "pos_y" => 10, 
         "color" => '#fff',
         "fontsize" => "120",
         "angle" => 0,
-        "linelength" => 400,
-        "lineheight" => 0.8
+        "linelength" => 1180,
+        "lineheight" => 0.9
     ];
     private $overlay_default_values = [
         "pos_x" => 0, "pos_y" => 0, 
@@ -25,34 +37,110 @@ class OgImageGenerator {
 
     public function __construct()
     {
-        $this->cache_path = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . "cache".DIRECTORY_SEPARATOR;
-        $this->base_image = __DIR__ . DIRECTORY_SEPARATOR . '..' . DIRECTORY_SEPARATOR . "static" . DIRECTORY_SEPARATOR . "assets" . DIRECTORY_SEPARATOR . "og_episode_base.png";
-        $this->font_dir = __DIR__.DIRECTORY_SEPARATOR."..".DIRECTORY_SEPARATOR."static".DIRECTORY_SEPARATOR."assets".DIRECTORY_SEPARATOR;
-        $this->set_font("Arial.ttf");
+        $this->setup_paths_and_directories();
+        $this->set_font($this->text_default_values['font']);
     }
 
-    public function set_xy_pos($x = 0, $y = 0)
+    /* DIRECTORIES -------------------------------- */
+
+    private function setup_paths_and_directories() 
+    {
+        $root=pathinfo($_SERVER['SCRIPT_FILENAME']);
+        $this->BASE_FOLDER = basename($root['dirname']);
+        $this->SITE_ROOT = realpath(dirname(__FILE__).DIRECTORY_SEPARATOR.'..');
+        $this->SITE_URL = empty($_SERVER['HTTP_HOST']) ? null : 'http'. (!empty($_SERVER['HTTPS']) ? "s" : "") .'://'.$_SERVER['HTTP_HOST'].'/'.$this->BASE_FOLDER;
+
+        $this->cache_dir = $this->SITE_ROOT.DIRECTORY_SEPARATOR."cache".DIRECTORY_SEPARATOR;
+        $this->save_dir = $this->SITE_ROOT.DIRECTORY_SEPARATOR."og-images".DIRECTORY_SEPARATOR;
+        $this->save_dir_url = $this->SITE_URL."/og-images/";
+        $this->font_dir = $this->SITE_ROOT.DIRECTORY_SEPARATOR.'fonts'.DIRECTORY_SEPARATOR;
+    }
+
+    public function set_font_dir($dir) 
+    {
+        if (file_exists($dir) && is_dir($dir)):
+            $this->font_dir = $dir;
+        endif;
+        return $this->font_dir;
+    }
+
+    public function set_save_dir($dir) 
+    {
+        if (file_exists($dir) && is_dir($dir)):
+            $this->save_dir = $dir;
+        endif;
+        return $this->save_dir;
+    }
+
+    public function set_cache_dir($dir) 
+    {
+        if (file_exists($dir) && is_dir($dir)):
+            $this->cache_dir = $dir;
+        endif;
+        return $this->cache_dir;
+    }
+
+    # 🗑️
+    function getRelativePath($from, $to)
+    {
+        // some compatibility fixes for Windows paths
+        $from = is_dir($from) ? rtrim($from, '\/') . '/' : $from;
+        $to   = is_dir($to)   ? rtrim($to, '\/') . '/'   : $to;
+        $from = str_replace('\\', '/', $from);
+        $to   = str_replace('\\', '/', $to);
+
+        $from     = explode('/', $from);
+        $to       = explode('/', $to);
+        $relPath  = $to;
+
+        foreach($from as $depth => $dir) {
+            // find first non-matching dir
+            if($dir === $to[$depth]) {
+                // ignore this directory
+                array_shift($relPath);
+            } else {
+                // get number of remaining dirs to $from
+                $remaining = count($from) - $depth;
+                if($remaining > 1) {
+                    // add traversals up to first matching dir
+                    $padLength = (count($relPath) + $remaining - 1) * -1;
+                    $relPath = array_pad($relPath, $padLength, '..');
+                    break;
+                } else {
+                    $relPath[0] = './' . $relPath[0];
+                }
+            }
+        }
+        return implode('/', $relPath);
+    }
+
+
+
+    public function set_default_xy_pos($x = 0, $y = 0)
     {
         if (is_int($x)) $this->overlay_default_values["pos_x"] = $x;
         if (is_int($y)) $this->overlay_default_values["pos_y"] = $y;
         return [$this->overlay_default_values["pos_x"], $this->overlay_default_values["pos_y"]];
     }
 
-    public function set_text_xy_pos($x = 0, $y = 0)
+    public function set_default_text_xy_pos($x = 0, $y = 0)
     {
         if (is_int($x)) $this->text_default_values["pos_x"] = $x;
         if (is_int($y)) $this->text_default_values["pos_y"] = $y;
         return [$this->text_default_values["pos_x"], $this->text_default_values["pos_y"]];
     }
 
-    public function set_resize($size = null) 
+    public function set_default_resize($size = null) 
     {
         if (empty($size) or $size == 0) $this->overlay_default_values["resize"] = false; else $this->overlay_default_values["resize"] = $size;
         return $this->overlay_default_values["resize"];
     }
 
-    public function set_font($font = null, $size = null, $return = false) 
+    public function set_font($font = null, $size = null, $set_as_default = true) 
     {
+        if (is_array($font)):
+            var_dump($font);die();
+        endif;
         $_font = null;
         if (file_exists($font)):
             $_font = $font;
@@ -64,15 +152,21 @@ class OgImageGenerator {
             $_font = $this->font_dir.$font.".ttf";
         endif;
         if (!empty($size) && $size > 0) $this->text_default_values["fontsize"] = $size;
-        if ($return === true) return $_font;
+        if ($set_as_default !== true) return $_font;
         $this->text_default_values["font"] = $_font;
-        return [ $this->text_default_values["font"], $this->text_default_values["fontsize"], $this->text_default_values["color"] ];
+        return $this->text_default_values["font"]; # , $this->text_default_values["fontsize"], $this->text_default_values["color"] ];
     }
 
-    public function set_color($color = '#fff')
+    public function set_default_text_color($color = '#fff')
     {
         if (!empty($color)) $this->text_default_values["color"] = $color;
         return $this->text_default_values["color"];
+    }
+
+    public function set_background_color($color = '#fff')
+    {
+        if (!empty($color)) $this->background_color = $color;
+        return $this->background_color;
     }
 
     public function add_text($str = "", $opt = []) 
@@ -90,25 +184,38 @@ class OgImageGenerator {
         return $this->overlay_images;
     }
 
+    public function get_og_image_url($absolute_path = null) 
+    {
+        if (empty($absolute_path)) $hash = $this->last_image;
+        if (empty($absolute_path) || !file_exists($absolute_path)) return null;
+        $filename = basename($absolute_path);
+        return $this->save_dir_url . (substr($this->save_dir_url,-1) == "/" ? "" : "/") .$filename;
+    }
+
     public function make_og_image($force_fresh = false)
     {
         if (TRUE !== extension_loaded('imagick')):
             $this->error('ERR: no imagick!', true);
         endif;
-        $hash = md5(md5($this->base_image) . serialize($this->base_image) . serialize($this->text));
-        $this->cache = new CustomCache($this->cache_path);
-        $cachedir = $this->cache->getCacheDir();
-        $hashedFile = $cachedir . "" . $hash . ".png";
+        $hash = md5(serialize($this->overlay_images) . serialize($this->text));
+        $save_path = $this->save_dir . "" . $hash . ".png";
+        $this->last_image = $save_path;
 
-        if (file_exists($hashedFile) && $force_fresh === false) return "/cache/".$hashedFile;
+        if (file_exists($save_path) && $force_fresh === false) return $this->get_og_image_url($save_path);
 
-        $top_image = new \Imagick();
-        $base_image = new \Imagick();
+        $top_image = new Imagick();
+        $base_image = new Imagick();
 
-        if (FALSE === $base_image->readImage($this->base_image)):
-            $this->error('ERR: error readin base image at '.$base_image, true);
-        endif;
-        $base_image->setImageFileName($hashedFile);
+        // if (FALSE === $base_image->readImage($this->base_image)):
+        //     $this->error('ERR: error readin base image at '.$base_image, true);
+        // endif;
+        $base_image->newImage(
+                $this->og_resolution_w,
+                $this->og_resolution_h, 
+                new ImagickPixel($this->background_color), 
+                'png'
+        );
+        $base_image->setImageFileName($save_path);
 
         if ($this->overlay_images && count($this->overlay_images) > 0) :
             foreach ($this->overlay_images as $individual_image):
@@ -146,25 +253,19 @@ class OgImageGenerator {
                 $draw->setFillColor($text_snippet[1]["color"]);
                 $draw->setFont($this->set_font($text_snippet[1]["font"], $text_snippet[1]["fontsize"], true));
                 $draw->setFontSize($text_snippet[1]["fontsize"]);
-                // $base_image->annotateImage(
-                //     $draw, 
-                //     $text_snippet[1]["pos_x"], 
-                //     $text_snippet[1]["pos_y"] + $text_snippet[1]["fontsize"], 
-                //     0, 
-                //     $text_snippet[0]
-                // );
 
+                // calculate space for lines and write line by line
                 list($lines, $lineHeight) = $this->wordWrapAnnotation($base_image, $draw, $text_snippet[0], $text_snippet[1]["linelength"]);
                 for($i = 0; $i < count($lines); $i++):
-                    $base_image->annotateImage($draw, $text_snippet[1]["pos_x"], $text_snippet[1]["pos_y"] + $i * ($text_snippet[1]["lineheight"] * $lineHeight), 0, $lines[$i]);
+                    $base_image->annotateImage($draw, $text_snippet[1]["pos_x"], $text_snippet[1]["pos_y"] + $text_snippet[1]["fontsize"] + $i * ($text_snippet[1]["lineheight"] * $lineHeight), 0, $lines[$i]);
                 endfor;
             endforeach;
         endif;
 
         if (FALSE == $base_image->writeImage()):
-            $this->error($error = 'ERR: error while writing to: ' . $hashedFile, $die = true);
+            $this->error($error = 'ERR: error while writing to: ' . $save_path, $die = true);
         endif;
-        return $hashedFile;
+        return $this->get_og_image_url($save_path);
     }
 
     private function fill_text_defaults($arr) 
