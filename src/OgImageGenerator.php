@@ -48,27 +48,34 @@ class OgImageGenerator {
         $root=pathinfo($_SERVER['SCRIPT_FILENAME']);
         $this->BASE_FOLDER = basename($root['dirname']);
         $this->SITE_ROOT = realpath(dirname(__FILE__).DIRECTORY_SEPARATOR.'..');
-        $this->SITE_URL = empty($_SERVER['HTTP_HOST']) ? null : 'http'. (!empty($_SERVER['HTTPS']) ? "s" : "") .'://'.$_SERVER['HTTP_HOST'].'/'.$this->BASE_FOLDER;
+        $this->SITE_URL = empty($_SERVER['HTTP_HOST']) ? "" : 'http'. (!empty($_SERVER['HTTPS']) ? "s" : "") .'://'.$_SERVER['HTTP_HOST'].'/'.$this->BASE_FOLDER;
 
         $this->cache_dir = $this->set_cache_dir();
         $this->save_dir = $this->set_save_dir();
         $this->save_dir_url = $this->set_save_dir_url();
         $this->font_dir = $this->set_font_dir();
+        // var_dump(array(
+        //     "cache" => $this->cache_dir,
+        //     "save" => $this->save_dir,
+        //     "save_url" => $this->save_dir_url,
+        //     "font_dir" => $this->font_dir,
+        //     "font" => $this->set_font($this->text_default_values["font"])
+        // ));die();
     }
 
     public function set_font_dir($dir = null) 
     {
-        if (file_exists($dir) && is_dir($dir)):
+        if (!empty($dir) && file_exists($dir) && is_dir($dir)):
             $this->font_dir = $dir;
         elseif(empty($dir)):
-            $this->SITE_ROOT.DIRECTORY_SEPARATOR.'fonts'.DIRECTORY_SEPARATOR;
+            $this->font_dir = $this->SITE_ROOT.DIRECTORY_SEPARATOR.'fonts'.DIRECTORY_SEPARATOR;
         endif;
         return $this->font_dir;
     }
 
     public function set_save_dir($dir = null) 
     {
-        if (file_exists($dir) && is_dir($dir)):
+        if (!empty($dir) && file_exists($dir) && is_dir($dir)):
             $this->save_dir = $dir;
         elseif (empty($dir)):
             $this->save_dir = $this->SITE_ROOT.DIRECTORY_SEPARATOR."og-images".DIRECTORY_SEPARATOR;
@@ -78,7 +85,7 @@ class OgImageGenerator {
 
     public function set_cache_dir($dir = null) 
     {
-        if (file_exists($dir) && is_dir($dir)):
+        if (!empty($dir) && file_exists($dir) && is_dir($dir)):
             $this->cache_dir = $dir;
         elseif (empty($dir)):
             $this->cache_dir = $this->SITE_ROOT.DIRECTORY_SEPARATOR."cache".DIRECTORY_SEPARATOR;
@@ -89,9 +96,9 @@ class OgImageGenerator {
     public function set_save_dir_url($relative_url = null) 
     {
         if (!empty($url)):
-            $this->save_dir_url = substr($this->SITE_URL,-1) == "/" ? "" : "/" . $this->SITE_URL.$relative_url;
+            $this->save_dir_url = $this->SITE_URL. substr($this->SITE_URL,-1) == "/" ? "" : "/"  .(substr($relative_url,0,1) == "/" ? substr($relative_url,1) : $relative_url);
         else:
-            $this->save_dir_url = substr($this->SITE_URL,-1) == "/" ? "" : "/" . $this->SITE_URL."/og-images/";
+            $this->save_dir_url = $this->SITE_URL. substr($this->SITE_URL,-1) == "/" ? "" : "/" . "og-images/";
         endif;
         return $this->save_dir_url;
     }
@@ -154,10 +161,8 @@ class OgImageGenerator {
 
     public function set_font($font = null, $size = null, $set_as_default = true) 
     {
-        if (is_array($font)):
-            var_dump($font);die();
-        endif;
         $_font = null;
+        if (empty($font)) return $this->text_default_values["font"];
         if (file_exists($font)):
             $_font = $font;
         elseif (file_exists($font.".ttf")):
