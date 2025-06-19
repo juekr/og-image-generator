@@ -272,8 +272,8 @@ class OgImageGenerator {
             foreach ($this->text as $text_snippet):
                 $draw = new \ImagickDraw();
                 $draw->setFillColor($text_snippet[1]["color"]);
-                $draw->setFont($this->set_font($text_snippet[1]["font"], $text_snippet[1]["fontsize"], true));
-                $draw->setFontSize($text_snippet[1]["fontsize"]);
+                $draw->setFont($this->set_font($text_snippet[1]["font"] ?? "", $text_snippet[1]["fontsize"] ?? 12, true));
+                $draw->setFontSize($text_snippet[1]["fontsize"] ?? 12);
 
                 // calculate space for lines and write line by line
                 list($lines, $lineHeight) = $this->wordWrapAnnotation($base_image, $draw, $text_snippet[0], $text_snippet[1]["linelength"]);

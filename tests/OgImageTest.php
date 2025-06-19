@@ -6,6 +6,10 @@ use PHPUnit\Framework\TestCase;
 
 final class ImagickTest extends TestCase
 {
+    public function test_paths():void 
+    {
+        
+    }
     public function test_setup():void
     {
         $class = new OgImageGenerator();
