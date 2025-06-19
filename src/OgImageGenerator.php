@@ -171,6 +171,8 @@ class OgImageGenerator {
             $_font = $this->font_dir.$font;
         elseif (file_exists($this->font_dir.$font.".ttf")):
             $_font = $this->font_dir.$font.".ttf";
+        else:
+            $_font = $this->font_dir."Rainbow2000.ttf";
         endif;
         if (!empty($size) && $size > 0) $this->text_default_values["fontsize"] = $size;
         if ($set_as_default !== true) return $_font;
